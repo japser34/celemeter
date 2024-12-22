@@ -43,9 +43,9 @@ class celemeter:
         self.root.mainloop()
 
     def open(self):
-        file_path = tkinter.filedialog.askopenfilename(title="Open bestand", filetypes=[("tekst bestanden", "*.txt")])
-        if file_path:
-            print(file_path)
+        file_paths = tkinter.filedialog.askopenfilenames(title="Open bestand", filetypes=[("tekst bestanden", "*.txt")])
+        for file_path in file_paths:
+            self.debug(f"file_path: {file_path}")
             self.add_file(file_path)
 
     def add_file(self, file_path):
@@ -74,6 +74,7 @@ class celemeter:
                 self.file_frames.pop(i)
                 file_frame.destroy()
                 break
+
     def info(self):
         pass
 
@@ -82,6 +83,9 @@ class celemeter:
     
     def debug(self, text):
         print(f"[DEBUG]: {text}")
+
+    def warn(self, text):
+        print(f"[WARN]: {text}")
 
 if __name__ == "__main__":
     root = tk.Tk()
