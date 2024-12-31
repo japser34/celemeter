@@ -2,6 +2,22 @@ import tkinter as tk
 from tkinter import messagebox
 import math
 
+'''
+#####################
+#####################
+
+
+#######       #######
+#######       #######
+#######       #######
+#######       #######
+#######       #######
+#######       #######
+#######       #######
+#######       #######
+'''
+
+
 def calculate_displacement():
     try:
         length = float(length_entry.get())
