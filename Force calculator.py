@@ -2,28 +2,15 @@ import tkinter as tk
 from tkinter import messagebox
 import math
 
-'''
-#####################
-#####################
-
-
-#######       #######
-#######       #######
-#######       #######
-#######       #######
-#######       #######
-#######       #######
-#######       #######
-#######       #######
-'''
-
+# PIPE DISPLACEMENT ####################################################################################################################
 
 def calculate_displacement():
     try:
-        length = float(length_entry.get())
-        force = float(force_entry.get())
-        outer_dia = float(outer_dia_entry.get())
-        inner_dia = float(inner_dia_entry.get())
+        
+        length = float(entries["Tube Length"].get())
+        force = float(entries["Applied Force"].get())
+        outer_dia = float(entries["Outer Diameter"].get())
+        inner_dia = float(entries["Inner Diameter"].get())
         
         E = 71e9 
         I = (math.pi / 64) * (outer_dia**4 - inner_dia**4)
@@ -35,29 +22,81 @@ def calculate_displacement():
     except ZeroDivisionError:
         messagebox.showerror("Calculation Error", "Ensure the dimensions are valid and non-zero.")
 
-root = tk.Tk()
-root.title("Displacement Calculator - Aluminium 7075")
+#######################################################################################################################################
 
-tk.Label(root, text="Tube Length (m):").grid(row=0, column=0, padx=10, pady=5, sticky="w")
-length_entry = tk.Entry(root)
-length_entry.grid(row=0, column=1, padx=10, pady=5)
+def create_displacement_gui():
+    global entries, result_label 
+    root = tk.Tk()
+    root.title("Displacement Calculator - Aluminium 7075")
+    
+    
+    entries = {}  
+    parameters = ["Tube Length", "Applied Force", "Outer Diameter", "Inner Diameter"]
+    for i, param in enumerate(parameters):
+        tk.Label(root, text=f"{param}:").grid(row=i, column=0, padx=10, pady=5, sticky="w")
+        entry = tk.Entry(root)
+        entry.grid(row=i, column=1, padx=10, pady=5)
+        entries[param] = entry 
+    
+    result_label = tk.Label(root, text="Displacement: ", font=("Arial", 12))
+    result_label.grid(row=len(parameters), column=0, columnspan=2, pady=10)
+    
+    calculate_button = tk.Button(root, text="Calculate", command=calculate_displacement)
+    calculate_button.grid(row=len(parameters)+1, column=0, columnspan=2, pady=10)
+    
+    root.mainloop()
 
-tk.Label(root, text="Applied Force (N):").grid(row=1, column=0, padx=10, pady=5, sticky="w")
-force_entry = tk.Entry(root)
-force_entry.grid(row=1, column=1, padx=10, pady=5)
+# MINIMUM WALL THICKNESS ###############################################################################################################
 
-tk.Label(root, text="Outer Diameter (m):").grid(row=2, column=0, padx=10, pady=5, sticky="w")
-outer_dia_entry = tk.Entry(root)
-outer_dia_entry.grid(row=2, column=1, padx=10, pady=5)
+def calculate_wall_thickness():
+    try:
+        external_pressure = float(entries["External pressure"].get())
+        outer_diameter = float(entries["Outer diameter"].get())
+        E = 71.7e9
+        v = 0.33
 
-tk.Label(root, text="Inner Diameter (m):").grid(row=3, column=0, padx=10, pady=5, sticky="w")
-inner_dia_entry = tk.Entry(root)
-inner_dia_entry.grid(row=3, column=1, padx=10, pady=5)
+        denominator = math.sqrt(3 * (1 - v**2))
+        thickness = (external_pressure * outer_diameter * denominator) / (2 * E)
 
-result_label = tk.Label(root, text="Displacement: ", font=("Arial", 12))
-result_label.grid(row=4, column=0, columnspan=2, pady=10)
+        result_label.config(text=f"Minimum wall thickness: {thickness * 1000:.4f} mm")
+    
+    except ValueError:
+        messagebox.showerror("Input Error", "Please enter valid numeric values.")
+    except ZeroDivisionError:
+        messagebox.showerror("Calculation Error", "Ensure the dimensions are valid and non-zero.")
 
-calculate_button = tk.Button(root, text="Calculate", command=calculate_displacement)
-calculate_button.grid(row=5, column=0, columnspan=2, pady=10)
+#######################################################################################################################################
 
-root.mainloop()
+def create_thickness_gui():
+    global entries, result_label 
+    root = tk.Tk()
+    root.title("Minimum wall thickness calculator - Aluminium 7075")
+    
+    entries = {} 
+    parameters = ["External pressure", "Outer diameter"]
+    for i, param in enumerate(parameters):
+        tk.Label(root, text=f"{param}:").grid(row=i, column=0, padx=10, pady=5, sticky="w")
+        entry = tk.Entry(root)
+        entry.grid(row=i, column=1, padx=10, pady=5)
+        entries[param] = entry  
+    
+    
+    result_label = tk.Label(root, text="Minimum thickness: ", font=("Arial", 12))
+    result_label.grid(row=len(parameters), column=0, columnspan=2, pady=10)
+    
+    
+    calculate_button = tk.Button(root, text="Calculate", command=calculate_wall_thickness)
+    calculate_button.grid(row=len(parameters)+1, column=0, columnspan=2, pady=10)
+    
+    
+    root.mainloop()
+
+# MENU #################################################################################################################################
+
+user_input = input("Enter command: ").strip().lower()
+if user_input == "displacement, aluminium 7050":
+    create_displacement_gui()
+if user_input == "wall thickness, aluminium 7050":
+    create_thickness_gui()
+else:
+    print("Command not recognized. Please enter a valid command to proceed.")
