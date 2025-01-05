@@ -1,10 +1,28 @@
 import tkinter as tk
-from tkinter import ttk
-import tkinter.filedialog
-import tkinter.messagebox
+from tkinter import ttk, filedialog, messagebox
 import os
 import subprocess
+import time
+import sys
 
+SYSTEM_ARGS = sys.argv
+
+DEBUG = False
+WARN = False
+ERROR = False
+if len(SYSTEM_ARGS) > 1:
+    if SYSTEM_ARGS[1] == "1":
+        print("error mode")
+        ERROR = True
+    elif SYSTEM_ARGS[1] == "2":
+        print("error and warn mode")
+        ERROR = True
+        WARN = True
+    elif SYSTEM_ARGS[1] == "3":
+        print("error, warn and debug mode")
+        ERROR = True
+        WARN = True
+        DEBUG = True
 
 IMPORTANT = '''
 #####################
@@ -29,13 +47,15 @@ class debug:
         self.type = type
 
     def debug(self, text):
-        print(f"{self.colors['debug']}[DEBUG {self.type}]: {self.colors['reset']}{text}")
-    
+        if DEBUG:
+            print(f"{self.colors['debug']}[DEBUG {self.type}]: {self.colors['reset']}{text}")    
     def warn(self, text):
-        print(f"{self.colors['warn'] }[WARN  {self.type}]: {self.colors['reset']}{text}")
+        if WARN:
+            print(f"{self.colors['warn'] }[WARN  {self.type}]: {self.colors['reset']}{text}")
     
     def error(self, text):
-        print(f"{self.colors['error']}[ERROR {self.type}]: {self.colors['reset']}{text}")
+        if ERROR:
+            print(f"{self.colors['error']}[ERROR {self.type}]: {self.colors['reset']}{text}")
 
 class Plotting:
     def __init__(self, x_label="Tijd sinds start (s)", y_label="Waarde", title="Grafiek"):
@@ -69,7 +89,7 @@ class Plotting:
 
         commands = []
         for file_name, x_col, y_col in self.data:
-            commands.append(f'"{file_name}" using {x_col}:{y_col} with lines title "{file_name}.{y_col}"')
+            commands.append(f'"{file_name.replace("\\", "/")}" using {x_col}:{y_col} with lines title "{file_name}.{y_col}"')
             self.debug.debug(f'plotting "{file_name}" using {x_col}:{y_col} with lines title "{file_name}.{y_col}"')
         
         return ", ".join(commands)
@@ -98,7 +118,7 @@ class Plotting:
             self.gnuplot = None
             self.debug.debug("closed gnuplot")
         else:
-            self.debug.debug("gnuplot already closed")
+            self.debug.warn("gnuplot already closed")
 
 class celemeter:
     def __init__(self, root):
@@ -118,11 +138,7 @@ class celemeter:
 
         self.debug.debug("starting mainloop")
         self.root.mainloop()
-
-    def loading_animation(self):
-        self.debug.debug("loading animation")
-
-
+        self.debug.debug("mainloop ended")
 
     def initialize_main_ui(self):
         self.debug.debug("initializing")
@@ -153,7 +169,7 @@ class celemeter:
 
     def open(self):
         self.debug.debug("opening filedialog")
-        file_paths = tkinter.filedialog.askopenfilenames(title="Open bestand", filetypes=[("tekst bestanden", "*.txt")])
+        file_paths = tk.filedialog.askopenfilenames(title="Open bestand", filetypes=[("tekst bestanden", "*.txt")])
         self.debug.debug(f"file_paths: {file_paths}")
         for file_path in file_paths:
             if self.check_file(file_path):
@@ -178,8 +194,8 @@ class celemeter:
             else:
                 self.debug.debug(f'file "{file_path}" is not already open')
                 return True
-        except:
-            self.debug.warn(f'file "{file_path}" does not exist')
+        except Exception as e:
+            self.debug.error(f'could not check if file "{file_path}" is open: {e}')
             return False
 
     def convert_raw_file(self, file_path, temp_file_path):
@@ -192,7 +208,7 @@ class celemeter:
                 self.debug.debug(f'"{self.temp_file_foder}" already exists')
             
             if os.path.exists(temp_file_path):
-                self.debug.warn(f'temp file "{temp_file_path}" already exists')
+                self.debug.error(f'temp file "{temp_file_path}" already exists')
                 return False
             with open(temp_file_path, "w") as temp_file:
                 with open(file_path, "r") as raw_file:
@@ -201,16 +217,19 @@ class celemeter:
                             temp_file.write(line.removeprefix(">23|01:").strip() + "\n")
             self.debug.debug(f'processed "{file_path}" -> "{temp_file_path}"')
         except FileNotFoundError:
-            self.debug.warn(f'file "{file_path}" does not exist')
+            self.debug.error(f'file "{file_path}" not found')
         except PermissionError:
             self.debug.warn(f'could not create "{self.temp_file_foder}"')
         except Exception as e:
             self.debug.error(f'could not process "{file_path}": {e}')
 
-
     def generate_temp_file_name(self, file_path):
         self.debug.debug(f'generating temp file name for "{file_path}"')
-        return f"{self.temp_file_foder}/{file_path.split('/')[-1].split('.')[0]}{self.temp_file_extension}"
+        file_name = os.path.basename(file_path)
+        file_name_parts = file_name.split('.')
+        timestamp = str(int(time.time()))
+        temp_file_name = f"{file_name_parts[0]}_{timestamp}{self.temp_file_extension}"
+        return os.path.join(self.temp_file_foder, temp_file_name)
 
     def add_file(self, file_path):
         temp_file_path = self.generate_temp_file_name(file_path)
@@ -230,8 +249,6 @@ class celemeter:
         self.file_frames.append([file_frame, info_button, file_name_label, column_entry, remove_button, temp_file_path])
         file_frame.pack()
 
-
-
     def remove(self, file_frame):
         self.debug.debug(f'removing "{file_frame}"')
 
@@ -245,9 +262,9 @@ class celemeter:
                         os.remove(temp_file_path)
                         self.debug.debug(f'removed temp file "{temp_file_path}"')
                     except Exception as e:
-                        self.debug.warn(f'could not remove temp file "{temp_file_path}": {e}')
+                        self.debug.error(f'could not remove temp file "{temp_file_path}": {e}')
                 else:
-                    self.debug.debug(f'temp file "{temp_file_path}" does not exist')
+                    self.debug.warn(f'temp file "{temp_file_path}" does not exist')
 
                 frame[0].destroy()
                 self.file_frames.remove(frame)
@@ -255,8 +272,6 @@ class celemeter:
                 return
             else:
                 self.debug.debug(f'frame "{frame}" is not the one to remove')
-
-
 
     def close(self):
         self.debug.debug("closing files")
@@ -268,7 +283,7 @@ class celemeter:
 
         self.debug.debug("closing gnuplot")
         self.gnuplot.close()
-        
+
         self.debug.debug("closing window")
         self.root.destroy()
 
@@ -277,7 +292,8 @@ class celemeter:
 
     def get_columns(self, file_frame):
         data = file_frame[3].get()
-        return data.split(",")
+        self.debug.debug(f'data: {data}')
+        return data.split(",") if data else []
 
     def plot(self): # the data should look like this: [(file_name, x_col, y_col), ...]
         self.debug.debug("plotting")
@@ -286,9 +302,12 @@ class celemeter:
             self.debug.debug(f'getting columns for "{file_frame}"')
             columns = self.get_columns(file_frame)
             self.debug.debug(f'columns: {columns}')
-            for column in columns:
-                self.debug.debug(f'adding column {column} to gnuplot')
-                self.gnuplot.data.append((file_frame[5], 0, int(column)))
+            if columns:
+                for column in columns:
+                    self.debug.debug(f'adding column {column} to gnuplot')
+                    self.gnuplot.data.append((file_frame[5], 1, int(column)))
+            else:
+                self.debug.warn(f'no columns to plot for "{file_frame}"')
         self.gnuplot.plot()
 
 if __name__ == "__main__":
