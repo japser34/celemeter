@@ -6,7 +6,7 @@ import os
 import subprocess
 
 
-'''
+IMPORTANT = '''
 #####################
 #####################
 
@@ -104,6 +104,7 @@ class celemeter:
         self.file_frames = []
         self.debug = debug(type="main")
 
+        self.debug.debug(IMPORTANT)
 
         self.initialize_main_ui()
 
@@ -270,7 +271,8 @@ class celemeter:
 
     def get_column(self, file_frame):
         self.debug.debug(f'getting column for "{file_frame}"')
-        self.debug.debug(f'returning "{file_frame[2].cget("text")}"')
+
+        data = file_frame[3].get()
         return file_frame[2].cget("text")
 
     def plot(self): # the data should look like this: [(file_name, x_col, y_col), ...]
