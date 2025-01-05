@@ -61,13 +61,15 @@ class Plotting:
         self.gnuplot.stdin.flush()
 
     def generate_command(self):
+        self.debug.debug("generating command")
+        self.debug.debug(f'data: {self.data}')
         if not self.data:
             self.debug.warn("no data to plot")
             return
 
         commands = []
         for file_name, x_col, y_col in self.data:
-            commands.append(f'plot "{file_name}" using {x_col}:{y_col} with lines title "{file_name}.{y_col}"')
+            commands.append(f'"{file_name}" using {x_col}:{y_col} with lines title "{file_name}.{y_col}"')
             self.debug.debug(f'plotting "{file_name}" using {x_col}:{y_col} with lines title "{file_name}.{y_col}"')
         
         return ", ".join(commands)
@@ -81,8 +83,10 @@ class Plotting:
         if not commands:
             self.debug.warn("no commands to plot")
             return
-    
-        self.gnuplot.stdin.write(f'plot {commands}')
+
+        self.debug.debug(f'running `plot {commands}`')
+
+        self.gnuplot.stdin.write(f'plot {commands}\n')
         self.gnuplot.stdin.flush()
 
     def close(self):
@@ -216,7 +220,7 @@ class celemeter:
         info_button = tk.Button(file_frame, text="I", command=self.info)
         file_name_label = tk.Label(file_frame, text=file_path)
         column_entry = tk.Entry(file_frame)
-        remove_button = tk.Button(file_frame, text="X", command=lambda: self.remove(file_frame))
+        remove_button = tk.Button(file_frame, text="X", command=lambda frame=file_frame: self.remove(frame))
         
         info_button.grid(row=0, column=0)
         file_name_label.grid(row=0, column=1)
@@ -229,39 +233,41 @@ class celemeter:
 
 
     def remove(self, file_frame):
-        if file_frame in self.file_frames:
-            self.debug.debug(f'removing "{file_frame}"')
+        self.debug.debug(f'removing "{file_frame}"')
 
-            # Extract the actual frame widget
-            frame_widget = file_frame[0]  # This is the Tkinter Frame object
+        for frame in self.file_frames[:]:
+            if frame[0] == file_frame:
+                self.debug.debug(f'found frame to remove')
 
-            # Remove the temp file
-            temp_file_path = file_frame[5]
-            if temp_file_path:  # Only proceed if temp file exists
-                if os.path.exists(temp_file_path):
-                    self.debug.debug(f'removing temp file "{temp_file_path}"')
+                temp_file_path = frame[5]
+                if temp_file_path and os.path.exists(temp_file_path):
                     try:
                         os.remove(temp_file_path)
                         self.debug.debug(f'removed temp file "{temp_file_path}"')
                     except Exception as e:
                         self.debug.warn(f'could not remove temp file "{temp_file_path}": {e}')
-            
-            # Destroy the frame widget
-            frame_widget.destroy()  # This destroys the Tkinter Frame widget
-            self.file_frames.remove(file_frame)  # Remove the frame from the list
+                else:
+                    self.debug.debug(f'temp file "{temp_file_path}" does not exist')
 
-        else:
-            self.debug.debug(f'not removing "{file_frame}" because it is already removed')
+                frame[0].destroy()
+                self.file_frames.remove(frame)
+                self.debug.debug(f'successfully removed frame and its temp file')
+                return
+            else:
+                self.debug.debug(f'frame "{frame}" is not the one to remove')
 
 
 
     def close(self):
         self.debug.debug("closing files")
         self.debug.debug(f'file_frames: {self.file_frames}')
-        
-        # Track removed files to avoid removing them twice
-        for file_frame in self.file_frames[:]:  # Iterate over a copy of the list
-            self.remove(file_frame)
+
+        for file_frame in self.file_frames[:]:
+            self.debug.debug(f'removing file frame "{file_frame[0]}"')
+            self.remove(file_frame[0])
+
+        self.debug.debug("closing gnuplot")
+        self.gnuplot.close()
         
         self.debug.debug("closing window")
         self.root.destroy()
@@ -269,16 +275,20 @@ class celemeter:
     def info(self):
         pass
 
-    def get_column(self, file_frame):
-        self.debug.debug(f'getting column for "{file_frame}"')
-
+    def get_columns(self, file_frame):
         data = file_frame[3].get()
-        return file_frame[2].cget("text")
+        return data.split(",")
 
     def plot(self): # the data should look like this: [(file_name, x_col, y_col), ...]
         self.debug.debug("plotting")
+        self.gnuplot.data.clear()
         for file_frame in self.file_frames:
-            self.gnuplot.data.append((file_frame[5], 0, self.get_column(file_frame)))
+            self.debug.debug(f'getting columns for "{file_frame}"')
+            columns = self.get_columns(file_frame)
+            self.debug.debug(f'columns: {columns}')
+            for column in columns:
+                self.debug.debug(f'adding column {column} to gnuplot')
+                self.gnuplot.data.append((file_frame[5], 0, int(column)))
         self.gnuplot.plot()
 
 if __name__ == "__main__":
