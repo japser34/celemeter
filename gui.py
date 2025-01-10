@@ -10,20 +10,6 @@ SYSTEM_ARGS = sys.argv
 DEBUG = False
 WARN = False
 ERROR = False
-if len(SYSTEM_ARGS) > 1:
-    if SYSTEM_ARGS[1] == "1":
-        print("error mode")
-        ERROR = True
-    elif SYSTEM_ARGS[1] == "2":
-        print("error and warn mode")
-        ERROR = True
-        WARN = True
-    elif SYSTEM_ARGS[1] == "3":
-        print("error, warn and debug mode")
-        ERROR = True
-        WARN = True
-        DEBUG = True
-
 COL_NAMES = {
     "1": "Tijd sinds start (s)",
     "2": "Spanning in (V)",
